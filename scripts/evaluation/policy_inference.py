@@ -36,7 +36,8 @@ parser.add_argument("--policy_timeout_ms", type=int, default=15000, help="Timeou
 parser.add_argument("--policy_action_horizon", type=int, default=16, help="Action horizon of the policy.")
 parser.add_argument("--policy_language_instruction", type=str, default=None, help="Language instruction of the policy.")
 parser.add_argument("--policy_checkpoint_path", type=str, default=None, help="Checkpoint path of the policy.")
-
+parser.add_argument("--record", action="store_true", help="Record videos during evaluation.")
+parser.add_argument("--disable-mlflow", action="store_true", help="Disable MLflow logging during evaluation.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -50,7 +51,8 @@ app_launcher = AppLauncher(app_launcher_args)
 simulation_app = app_launcher.app
 
 import time
-
+from os import PathLike
+import uuid
 import carb
 import gymnasium as gym
 import omni
@@ -61,6 +63,7 @@ from leisaac.utils.env_utils import (
     dynamic_reset_gripper_effort_limit_sim,
     get_task_type,
 )
+from leisaac.enhance.envs.metric_logger import MLflowLoggerWrapper
 
 import leisaac  # noqa: F401
 
@@ -147,7 +150,49 @@ def main():
     env_cfg.recorders = None
 
     # create environment
-    env: ManagerBasedRLEnv = gym.make(args_cli.task, cfg=env_cfg).unwrapped
+    render_mode = "rgb_array" if args_cli.record else None
+    env: ManagerBasedRLEnv = gym.make(args_cli.task, cfg=env_cfg, render_mode=render_mode)
+
+    # Add recording
+    recording_path: PathLike | None = None
+    if args_cli.record:
+        # Recording uses the Gym RecordVideo wrapper
+        # It makes a single recording for the entire evaluation session
+        # We provide the output path to save the video files for the MLflowLoggerWrapper,
+        # so that the video is avalilable as an artifact in MLflow.
+        recording_path = f"./datasets/videos/{uuid.uuid4()}/"
+        print(f"[INFO] Recording videos during evaluation in {recording_path}")
+
+        unwrapped_env_for_terminations = env.unwrapped
+        def env_had_terminations() -> bool:
+            """
+            Triggers a new recording if one of the environments had a termination.
+            Only works as long as we have a single environment (num_envs=1).
+            """
+            nonlocal unwrapped_env_for_terminations
+            return unwrapped_env_for_terminations.termination_manager.terminated.any() or unwrapped_env_for_terminations.termination_manager.time_outs.any()
+
+        env = gym.wrappers.RecordVideo(env,
+                                       video_folder=recording_path,
+                                       name_prefix="eval_video",
+                                       disable_logger=True,
+                                       episode_trigger=lambda episode: True
+                                       )
+
+    # Add MLflow logging
+    policy_info = {
+        "policy_type": args_cli.policy_type,
+        "checkpoint_path": args_cli.policy_checkpoint_path,
+    }
+    
+
+    if not args_cli.disable_mlflow:
+        env = MLflowLoggerWrapper(env, 
+                                  policy=policy_info,
+                                  task=args_cli.task, 
+                                  task_description=args_cli.policy_language_instruction,
+                                  number_of_episodes=args_cli.eval_rounds,
+                                  artifact_paths=[recording_path])
 
     # create policy
     model_type = args_cli.policy_type
@@ -164,7 +209,7 @@ def main():
             host=args_cli.policy_host,
             port=args_cli.policy_port,
             timeout_ms=args_cli.policy_timeout_ms,
-            camera_keys=[key for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)],
+            camera_keys=[key for key, sensor in env.unwrapped.scene.sensors.items() if isinstance(sensor, Camera)],
             modality_keys=modality_keys,
         )
     elif "lerobot" in args_cli.policy_type:
@@ -179,7 +224,7 @@ def main():
             port=args_cli.policy_port,
             timeout_ms=args_cli.policy_timeout_ms,
             camera_infos={
-                key: sensor.image_shape for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)
+                key: sensor.image_shape for key, sensor in env.unwrapped.scene.sensors.items() if isinstance(sensor, Camera)
             },
             task_type=task_type,
             policy_type=policy_type,
@@ -194,7 +239,7 @@ def main():
         policy = OpenPIServicePolicyClient(
             host=args_cli.policy_host,
             port=args_cli.policy_port,
-            camera_keys=[key for key, sensor in env.scene.sensors.items() if isinstance(sensor, Camera)],
+            camera_keys=[key for key, sensor in env.unwrapped.scene.sensors.items() if isinstance(sensor, Camera)],
             task_type=task_type,
         )
 
@@ -209,6 +254,8 @@ def main():
     success_count, episode_count = 0, 1
 
     # simulate environment
+    unwrapped_env = env.unwrapped
+    device = unwrapped_env.device
     while max_episode_count <= 0 or episode_count <= max_episode_count:
         print(f"[Evaluation] Evaluating episode {episode_count}...")
         success, time_out = False, False
@@ -222,17 +269,21 @@ def main():
                     break
 
                 obs_dict = preprocess_obs_dict(obs_dict["policy"], model_type, args_cli.policy_language_instruction)
-                actions = policy.get_action(obs_dict).to(env.device)
+                actions = policy.get_action(obs_dict).to(device)
                 for i in range(min(args_cli.policy_action_horizon, actions.shape[0])):
                     action = actions[i, :, :]
-                    if env.cfg.dynamic_reset_gripper_effort_limit:
-                        dynamic_reset_gripper_effort_limit_sim(env, task_type)
+                    if unwrapped_env.cfg.dynamic_reset_gripper_effort_limit:
+                        dynamic_reset_gripper_effort_limit_sim(unwrapped_env, task_type)
                     obs_dict, _, reset_terminated, reset_time_outs, _ = env.step(action)
                     if reset_terminated[0]:
                         success = True
+                        if max_episode_count > 0 and episode_count < max_episode_count:
+                            obs_dict, _ = env.reset()
                         break
                     if reset_time_outs[0]:
                         time_out = True
+                        if max_episode_count > 0 and episode_count < max_episode_count:
+                            obs_dict, _ = env.reset()
                         break
                     if rate_limiter:
                         rate_limiter.sleep(env)

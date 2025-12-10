@@ -21,6 +21,7 @@ def create_module_hierarchy(path: str):
 
 
 helpers_path = "lerobot.scripts.server.helpers"
+helpers_path = "lerobot.async_inference.helpers"
 create_module_hierarchy(helpers_path)
 
 fake_lerobot_module = sys.modules[helpers_path]
