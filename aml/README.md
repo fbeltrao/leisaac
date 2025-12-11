@@ -14,6 +14,31 @@
 uv run python scripts/environments/zero_agent.py --task "LeIsaac-SO101-PickOrange-v0" --num_envs 1 --device "cuda" --enable_cameras
 ```
 
+## Evaluate policy in Azure ML
+
+```
+COMPUTE_NAME="<AML-COMPUTE_CLUSTER_NAME>"
+COMPUTE_NAME="gpu-nc4as-t4-v3"
+POLICY_TYPE="lerobot-act"
+EPISODE_LENGTH_S=50
+POLICY_LANGUAGE_INSTRUCTION="Pick up the orange and place it on the plate"
+POLICY_ACTION_HORIZON=50
+EVAL_ROUNDS=10
+CHECKPOINT_PATH="azureml://jobs/loyal_rhubarb_bpnbqzkwdh/outputs/checkpoint"
+CHECKPOINT_SUB_PATH="/checkpoints/050000/pretrained_model"
+
+aml/scripts/02-test-in-sim.sh \
+    --set "compute=$COMPUTE_NAME" \
+    --set "inputs.policy_type=$POLICY_TYPE" \
+    --set "inputs.policy_language_instruction=$POLICY_LANGUAGE_INSTRUCTION" \
+    --set "inputs.eval_rounds=$EVAL_ROUNDS" \
+    --set "inputs.policy_action_horizon=$POLICY_ACTION_HORIZON" \
+    --set "inputs.seed=42" \
+    --set "inputs.episode_length_s=$EPISODE_LENGTH_S" \
+    --set "inputs.checkpoint_path.path=$CHECKPOINT_PATH"
+```
+
+
 ## Evaluate policy
 
 

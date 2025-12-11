@@ -122,6 +122,19 @@ class Controller:
             if event.input.name == "R":
                 self.reset_state = True
         return True
+    
+def resolve_checkpoint(path: PathLike) -> str:
+    """
+    Resolves the model information based on checkpoint path
+    The path can contain sub-folders for multiple epochs. Unless specified, pick the latest epoch.
+    The epoch sub-folder might contain sub-folders. Prioritize "pretrained_model" folder if exists.
+    The pretrained_model folder might contain a config.json file. If exists, loads parameters from there:
+        - "type": is the model type
+        - "chunk_size": contains the action horizon used during training
+        - 
+    """
+    pass
+    
 
 
 def preprocess_obs_dict(obs_dict: dict, model_type: str, language_instruction: str):

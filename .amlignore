@@ -1,0 +1,45 @@
+# Exclude directories that may have permission issues or are not needed for the job
+.git/
+.github/
+.vscode/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# UV Python installations
+.local/
+/root/.local/
+
+# Isaac-Sim packman (large and not needed on remote)
+_isaac_sim*
+_repo
+_build
+
+# Dependencies (should be in the environment already)
+dependencies/
+
+# Documentation
+docs/
+
+# Outputs and logs
+outputs/
+output/
+videos/
+wandb/
+.neptune/
+*.log
+*.log.*
+
+# Build artifacts
+build/
+cmake-build*/
+*.so
+*.sif
+
+
+# Temporary files
+*.tmp
+.DS_Store

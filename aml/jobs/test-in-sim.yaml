@@ -1,0 +1,36 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+experiment_name: Test-In-Simulation
+type: command
+command: >-
+ ./aml/docker/eval_in_docker.sh
+ --task ${{inputs.task}}
+ --policy_type ${{inputs.policy_type}}
+ --eval_rounds ${{inputs.eval_rounds}}
+ --policy_language_instruction '${{inputs.policy_language_instruction}}'
+ --policy_action_horizon ${{inputs.policy_action_horizon}}
+ --seed ${{inputs.seed}}
+ --episode_length_s ${{inputs.episode_length_s}}
+ --policy_checkpoint_path "${{inputs.checkpoint_path}}/${{inputs.checkpoint_sub_folder}}"
+code: ../../ # relative to yaml file, not where the command is being run from
+inputs:
+  task: LeIsaac-SO101-PickOrange-v0
+  policy_type: lerobot-act
+  eval_rounds: 10
+  policy_language_instruction: "Pick up the orange and place it on the plate"
+  policy_action_horizon: 50
+  seed: 42
+  episode_length_s: 20
+  checkpoint_sub_folder: "" # Optional sub-folder inside the data asset
+  checkpoint_path:
+    type: uri_folder
+    path: azureml:<data_asset_name>:<version> # azureml:<data_asset_name>:<version>/sub-folder
+    mode: ro_mount
+  # docker_inference_extra_args: "-e XLA_CLIENT_MEM_FRACTION=0.60 -e XLA_PYTHON_CLIENT_PREALLOCATE=false"
+# resources:
+#   docker_args: -v=/var/run:/var/run # Needed for docker daemon to be available
+environment: azureml:isaaclab-azcli-docker@latest
+compute: <compute-name> # Requires a GPU-enabled compute like STANDARD_NC4AS_T4_V3
+limits:
+  timeout: 14400 # 4 hours / 240 minutes represented in seconds
+tags:
+  job-type: test-in-simulation
