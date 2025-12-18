@@ -24,10 +24,12 @@ EPISODE_LENGTH_S=50
 POLICY_LANGUAGE_INSTRUCTION="Pick up the orange and place it on the plate"
 POLICY_ACTION_HORIZON=50
 EVAL_ROUNDS=10
-CHECKPOINT_PATH="azureml://jobs/loyal_rhubarb_bpnbqzkwdh/outputs/checkpoint"
+TRAINING_JOB="clever_gas_yjfdf87zhj"
+CHECKPOINT_SUB_PATH="/checkpoints/050000/pretrained_model"
 CHECKPOINT_SUB_PATH="/checkpoints/050000/pretrained_model"
 
 aml/scripts/02-test-in-sim.sh \
+    --training-job "$TRAINING_JOB" \
     --set "compute=$COMPUTE_NAME" \
     --set "inputs.policy_type=$POLICY_TYPE" \
     --set "inputs.policy_language_instruction=$POLICY_LANGUAGE_INSTRUCTION" \
@@ -35,7 +37,8 @@ aml/scripts/02-test-in-sim.sh \
     --set "inputs.policy_action_horizon=$POLICY_ACTION_HORIZON" \
     --set "inputs.seed=42" \
     --set "inputs.episode_length_s=$EPISODE_LENGTH_S" \
-    --set "inputs.checkpoint_path.path=$CHECKPOINT_PATH"
+    --set "inputs.checkpoint_sub_folder=$CHECKPOINT_SUB_PATH"
+    --set "inputs.device=cuda:1"
 ```
 
 

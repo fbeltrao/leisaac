@@ -2,6 +2,7 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
 experiment_name: Test-In-Simulation
 type: command
 command: >-
+ ls "${{inputs.checkpoint_path}}${{inputs.checkpoint_sub_folder}}" &&
  ./aml/docker/eval_in_docker.sh
  --task ${{inputs.task}}
  --policy_type ${{inputs.policy_type}}
@@ -10,7 +11,8 @@ command: >-
  --policy_action_horizon ${{inputs.policy_action_horizon}}
  --seed ${{inputs.seed}}
  --episode_length_s ${{inputs.episode_length_s}}
- --policy_checkpoint_path "${{inputs.checkpoint_path}}/${{inputs.checkpoint_sub_folder}}"
+ --policy_checkpoint_path "${{inputs.checkpoint_path}}${{inputs.checkpoint_sub_folder}}"
+ --device ${{inputs.device}}
 code: ../../ # relative to yaml file, not where the command is being run from
 inputs:
   task: LeIsaac-SO101-PickOrange-v0
@@ -20,14 +22,17 @@ inputs:
   policy_action_horizon: 50
   seed: 42
   episode_length_s: 20
+  device: cuda
   checkpoint_sub_folder: "" # Optional sub-folder inside the data asset
   checkpoint_path:
     type: uri_folder
     path: azureml:<data_asset_name>:<version> # azureml:<data_asset_name>:<version>/sub-folder
     mode: ro_mount
-  # docker_inference_extra_args: "-e XLA_CLIENT_MEM_FRACTION=0.60 -e XLA_PYTHON_CLIENT_PREALLOCATE=false"
-# resources:
-#   docker_args: -v=/var/run:/var/run # Needed for docker daemon to be available
+  docker_inference_extra_args: "-e XLA_CLIENT_MEM_FRACTION=0.60 -e XLA_PYTHON_CLIENT_PREALLOCATE=false -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512"
+resources:
+  instance_count: 1
+  shm_size: 8g  # Increase shared memory for better performance
+  # docker_args: -v=/var/run:/var/run # Needed for docker daemon to be available
 environment: azureml:isaaclab-azcli-docker@latest
 compute: <compute-name> # Requires a GPU-enabled compute like STANDARD_NC4AS_T4_V3
 limits:

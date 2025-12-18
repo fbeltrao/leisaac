@@ -52,6 +52,7 @@ simulation_app = app_launcher.app
 
 import time
 from os import PathLike
+import os
 import uuid
 import carb
 import gymnasium as gym
@@ -148,6 +149,11 @@ def preprocess_obs_dict(obs_dict: dict, model_type: str, language_instruction: s
 
 def main():
     """Running lerobot teleoperation with leisaac manipulation environment."""
+
+
+    # Check if checkpoint path exists
+    if not os.path.exists(args_cli.policy_checkpoint_path):
+        raise FileNotFoundError(f"Checkpoint path {args_cli.policy_checkpoint_path} does not exist")
 
     env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=1)
     task_type = get_task_type(args_cli.task)
