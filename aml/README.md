@@ -42,19 +42,23 @@ aml/scripts/02-eval-in-sim.sh \
 
 ### Modifying cuda allocation based on VM
 
+The evaluation job uses a single compute to run Isaac Sim and inference. Depending on the compute SKU used you might want to allocate CUDA devices for each workload. Based on experience with ACT model, this is the setup depending on the compute SKU
 
+| Compute SKU | GPUs / memory | Mode | Additional job argument |
+|---|---|---|---|
+|[STANDARD_NC64AS_T4_V3](https://learn.microsoft.com/azure/virtual-machines/sizes/gpu-accelerated/ncast4v3-series?tabs=sizeaccelerators)| 4x GPUs with 16GB each | Split GPU between workloads | `--set "inputs.device=cuda:1"`|
+|[STANDARD_NC24ADS_A100_V4](https://learn.microsoft.com/azure/virtual-machines/sizes/gpu-accelerated/nca100v4-series?tabs=sizeaccelerators)| 1x GPUs with 80GB | All in single GPU | none |
+|[Standard_NC40ads_H100_v5](https://learn.microsoft.com/en-us/azure/virtual-machines/ncads-h100-v5)| 1x GPUs with 94GB | All in single GPU | none |
 
+## Evaluate policy in virtual machine
 
-## Evaluate policy
+If you want to evaluate the policy in a virtual machine with Isaac Sim and the downloaded checkpoint follow these steps:
 
-
+1. Download the checkpoint locally
 1. Start inference server
     1. In LeRobot: `uv run -m lerobot.async_inference.policy_server --host=127.0.0.1 --port=8080`
-
 2. Start evaluation
-```
+```bash
 CHECKPOINT_PATH=/path/to/checkpoint
 uv run scripts/evaluation/policy_inference.py --task "LeIsaac-SO101-PickOrange-v0" --policy_type "lerobot-act" --policy_port 8080 --policy_language_instruction "Pick up the orange and place it on the plate" --policy_checkpoint_path "$CHECKPOINT_PATH" --device cuda --enable_cameras --policy_action_horizon 50 --episode_length_s 15 --eval_rounds 3 --record --headless
 ```
-
-

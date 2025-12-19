@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
-experiment_name: Evaluate In Simulation
+experiment_name: Evaluate-In-Simulation
 type: command
 command: >-
  ./aml/download_assets.sh &&
