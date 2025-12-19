@@ -1,8 +1,8 @@
 $schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
-experiment_name: Test-In-Simulation
+experiment_name: Evaluate In Simulation
 type: command
 command: >-
- ls "${{inputs.checkpoint_path}}${{inputs.checkpoint_sub_folder}}" &&
+ ./aml/download_assets.sh &&
  ./aml/docker/eval_in_docker.sh
  --task ${{inputs.task}}
  --policy_type ${{inputs.policy_type}}
@@ -28,7 +28,7 @@ inputs:
     type: uri_folder
     path: azureml:<data_asset_name>:<version> # azureml:<data_asset_name>:<version>/sub-folder
     mode: ro_mount
-  docker_inference_extra_args: "-e XLA_CLIENT_MEM_FRACTION=0.60 -e XLA_PYTHON_CLIENT_PREALLOCATE=false -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512"
+  # docker_inference_extra_args: "-e XLA_CLIENT_MEM_FRACTION=0.60 -e XLA_PYTHON_CLIENT_PREALLOCATE=false -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512"
 resources:
   instance_count: 1
   shm_size: 8g  # Increase shared memory for better performance

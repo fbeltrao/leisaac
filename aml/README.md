@@ -26,9 +26,8 @@ POLICY_ACTION_HORIZON=50
 EVAL_ROUNDS=10
 TRAINING_JOB="clever_gas_yjfdf87zhj"
 CHECKPOINT_SUB_PATH="/checkpoints/050000/pretrained_model"
-CHECKPOINT_SUB_PATH="/checkpoints/050000/pretrained_model"
 
-aml/scripts/02-test-in-sim.sh \
+aml/scripts/02-eval-in-sim.sh \
     --training-job "$TRAINING_JOB" \
     --set "compute=$COMPUTE_NAME" \
     --set "inputs.policy_type=$POLICY_TYPE" \
@@ -40,6 +39,10 @@ aml/scripts/02-test-in-sim.sh \
     --set "inputs.checkpoint_sub_folder=$CHECKPOINT_SUB_PATH"
     --set "inputs.device=cuda:1"
 ```
+
+### Modifying cuda allocation based on VM
+
+
 
 
 ## Evaluate policy

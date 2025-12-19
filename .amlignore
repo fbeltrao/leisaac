@@ -43,3 +43,7 @@ cmake-build*/
 # Temporary files
 *.tmp
 .DS_Store
+
+# USD assets that should be downloaded separately to avoid large code uploads to AML storage account
+# The AML job should download these assets at runtime as needed
+assets/**/*.usd
