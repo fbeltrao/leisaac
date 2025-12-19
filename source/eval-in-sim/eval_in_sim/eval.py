@@ -2,13 +2,14 @@ import argparse
 from dataclasses import dataclass
 from os import PathLike
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 import uuid
 
+import gymnasium as gym
 from isaaclab.app import AppLauncher
 
 if TYPE_CHECKING:
-    import gymnasium as gym
+    import gymnasium as gym    
 
 
 def resolve_args_cli():
@@ -57,10 +58,11 @@ def create_simulation_app(args_cli: argparse.Namespace) -> AppLauncher:
 
 @dataclass
 class EvaluationConfig:
-    init_env_cfg: callable[[argparse.Namespace, gym.Env], gym.Env] | None
-    create_policy: callable[[argparse.Namespace, gym.Env], object] | None
-    before_step: callable[[gym.Env, object], None] | None
-    environment_libraries: list[str] | str | None
+    init_env_cfg: Callable[[argparse.Namespace, object], object] | None = None
+    create_policy: Callable[[argparse.Namespace, gym.Env], object] | None = None
+    before_step: Callable[[gym.Env, object], None] | None = None
+    environment_libraries: list[str] | str | None = None
+    obs_processor: Callable[[dict, str, str] , dict] | None = None
 
 def import_libraries(libraries: list[str] | str):
     if libraries is None:
@@ -227,9 +229,10 @@ def run_app(simulation_app, args_cli: argparse.Namespace, config: EvaluationConf
     simulation_app.close()
 
 
-def run_evaluation(config: EvaluationConfig | None = None):
+def run_evaluation(config_factory: Callable[[argparse.Namespace], EvaluationConfig] | None = None):
     args_cli = resolve_args_cli()
     simulation_app = create_simulation_app(args_cli)
+    config = config_factory(args_cli) if config_factory is not None else None
     run_app(simulation_app, args_cli, config)
     simulation_app.close()
 
