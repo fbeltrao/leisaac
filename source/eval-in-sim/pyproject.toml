@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools", "wheel", "toml"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eval-in-sim"
+version = "0.1.0"
+description = "Eval-in-sim"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = []
+maintainers = []
+keywords = ["extension", "isaaclab", "leisaac"]
+classifiers = [
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.10",
+    "Isaac Sim :: 4.5.0",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "psutil",
+    "pyserial",
+    "deepdiff",
+    "feetech-servo-sdk",
+    "pygame>=2.5.1,<2.7.0",
+    "isaaclab[isaacsim,all]==2.3.0",
+    "azureml-mlflow==1.61.0.post1",
+    "azure-identity>=1.13.0",
+    "azure-ai-ml>=1.30.0"
+]
+
+[tool.setuptools]
+packages = {find = {}}
+include-package-data = true
+zip-safe = false
+
+
+[project.optional-dependencies]
+gr00t = ["pyzmq>=27.0.0", "pydantic==2.10.6", "msgpack>=1.0.5"]
+lerobot-async = ["grpcio==1.74.0", "protobuf==6.32.0"] # original isaaclab install protobuf version is 3.20.3
+openpi = ["dm-tree>=0.1.8", "msgpack>=1.0.5", "numpy>=1.22.4,<2.0.0", "pillow>=9.0.0", "tree>=0.2.4", "websockets>=11.0"]
