@@ -7,12 +7,13 @@ import uuid
 
 import gymnasium as gym
 from isaaclab.app import AppLauncher
+from omni.isaac.kit import SimulationApp
 
 if TYPE_CHECKING:
     import gymnasium as gym    
 
 
-def resolve_args_cli():
+def resolve_args_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluation in Simulation.")
     parser.add_argument("--task", type=str, default=None, help="Name of the task.")
     parser.add_argument("--step_hz", type=int, default=60, help="Environment stepping rate in Hz.")
@@ -47,7 +48,7 @@ def resolve_args_cli():
     # parse the arguments
     return parser.parse_args()
 
-def create_simulation_app(args_cli: argparse.Namespace) -> AppLauncher:
+def create_simulation_app(args_cli: argparse.Namespace) -> SimulationApp:
     
     app_launcher_args = vars(args_cli)
 
@@ -65,6 +66,11 @@ class EvaluationConfig:
     obs_processor: Callable[[dict, str, str] , dict] | None = None
 
 def import_libraries(libraries: list[str] | str):
+    """
+    Import additional environment libraries.
+    Args:
+        libraries (list[str] | str): List of library names to import.
+    """
     if libraries is None:
         return
     if isinstance(libraries, str):
@@ -112,7 +118,7 @@ def create_env_cfg(args_cli: argparse.Namespace, config: EvaluationConfig | None
 
     return env_cfg
 
-def run_app(simulation_app, args_cli: argparse.Namespace, config: EvaluationConfig | None):
+def run_app(simulation_app: SimulationApp, args_cli: argparse.Namespace, config: EvaluationConfig | None):
     import torch
     from isaaclab.envs import ManagerBasedRLEnv
 
@@ -154,7 +160,7 @@ def run_app(simulation_app, args_cli: argparse.Namespace, config: EvaluationConf
 
     # create policy   
     from .policy import create_policy
-    policy, policy_type = create_policy(args_cli, env) if config is None else config.create_policy(args_cli, env)
+    policy, policy_type = create_policy(args_cli, env) if config is None or config.create_policy is None else config.create_policy(args_cli, env)
     
     from ._controller import Controller
     from ._rate_limiter import RateLimiter

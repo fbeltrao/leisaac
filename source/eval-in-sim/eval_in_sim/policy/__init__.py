@@ -28,7 +28,6 @@ def create_policy(args_cli: argparse.Namespace, env: gym.Env) -> tuple[Policy, s
             camera_infos={
                 key: sensor.image_shape for key, sensor in env.unwrapped.scene.sensors.items() if isinstance(sensor, Camera)
             },
-            task_type=task_type,
             policy_type=policy_type,
             pretrained_name_or_path=args_cli.policy_checkpoint_path,
             actions_per_chunk=args_cli.policy_action_horizon,
@@ -41,7 +40,6 @@ def create_policy(args_cli: argparse.Namespace, env: gym.Env) -> tuple[Policy, s
             host=args_cli.policy_host,
             port=args_cli.policy_port,
             camera_keys=[key for key, sensor in env.unwrapped.scene.sensors.items() if isinstance(sensor, Camera)],
-            task_type=task_type,
         ), "openpi"
     
     raise ValueError(f"Unknown policy type: {args_cli.policy_type}")

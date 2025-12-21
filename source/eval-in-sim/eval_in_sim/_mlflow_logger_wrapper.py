@@ -314,7 +314,7 @@ class MLflowLoggerWrapper(gym.Wrapper):
         self.step_dt = unwrapped_env.step_dt
 
     def step(self, action: torch.Tensor | Any) -> tuple[Any, float, bool, bool, dict]:
-        #Need to make a copy to avoid resetting step_number on env.step
+        # Need to make a copy to avoid resetting step_number on env.step
         self.step_number = self.env.unwrapped.episode_length_buf.clone()
         obs, reward, done, truncated, info = self.env.step(action)
         termination_status = detect_termination(done=done, truncated=truncated, extras=info)
