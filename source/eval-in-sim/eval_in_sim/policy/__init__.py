@@ -1,5 +1,5 @@
 import argparse
-from .base import *
+from .base import Policy
 from isaaclab.sensors import Camera
 import gymnasium as gym
 

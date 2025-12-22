@@ -4,7 +4,6 @@ import os
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any, TypedDict
 
@@ -13,6 +12,8 @@ import mlflow
 import pandas as pd
 import torch
 from isaaclab.envs import ManagerBasedRLEnv
+
+from ._env_utils import detect_termination
 
 
 class PolicyInfo(TypedDict):
@@ -233,42 +234,6 @@ class _EvaluationMetricsLogger:
             params=params,
         )
 
-
-@dataclass
-class TerminationStatus:
-    """Class for keeping track of termination status."""
-
-    terminated: bool = False
-    success: bool = False
-    is_timeout: bool = False
-    reasons: list[str] | None = None
-
-
-def detect_termination(done: torch.Tensor, truncated: torch.Tensor, extras: dict) -> TerminationStatus:
-    """
-    Detect the reason for termination based on the reset flags and extras.
-    Limitation: only works for single environment (no vectorization).
-    """
-
-    if not truncated.any() and not done.any():
-        return TerminationStatus(terminated=False)
-
-    if truncated.any():
-        return TerminationStatus(terminated=True, success=False, is_timeout=True, reasons=["timeout"])
-
-    termination_log = extras.get("log", {})
-    TERMINATION_PREFIX = "Episode_Termination/"
-    termination_reasons = {k: v for k, v in termination_log.items() if k.startswith(TERMINATION_PREFIX) and v > 0}
-    if termination_reasons:
-        reasons = list(reason.replace(TERMINATION_PREFIX, "") for reason in termination_reasons.keys())
-        succeeded = all("success" in reason.lower() for reason in reasons)
-        return TerminationStatus(terminated=True, success=succeeded, reasons=reasons)
-
-    return TerminationStatus(terminated=True, success=True, reasons=["unknown"])
-
-METRICS_OBSERVATION_GROUP_NAME = "metrics"
-METRICS_OBSERVATION_GROUP_NAME = "subtask_terms"
-
 class MLflowLoggerWrapper(gym.Wrapper):
     """Wrapper for logging metrics to MLflow.
 
@@ -284,6 +249,7 @@ class MLflowLoggerWrapper(gym.Wrapper):
         task_description: str,
         number_of_episodes: int,
         artifact_paths: list[os.PathLike | None] | None = None,
+        metrics_observation_group_name: str | None = None,
     ):
         super().__init__(env)
 
@@ -302,11 +268,12 @@ class MLflowLoggerWrapper(gym.Wrapper):
             "task_description": task_description,
         }
 
+        self.metrics_observation_group_name = metrics_observation_group_name or "metrics"
         self.metrics_logger = _EvaluationMetricsLogger.create(policy=policy, task=task, params=extra_params)
         self.metrics_logger.start()
 
         self.observation_for_metrics = env.unwrapped.observation_manager.active_terms.get(
-            METRICS_OBSERVATION_GROUP_NAME, []
+            self.metrics_observation_group_name, []
         )
         self.last_obs: dict[str, Any] | None = None
 
@@ -361,7 +328,7 @@ class MLflowLoggerWrapper(gym.Wrapper):
     def extract_metrics(self, obs: dict) -> dict[str, float]:
         metrics = {}
         for metric_name in self.observation_for_metrics:
-            metric_value = obs[METRICS_OBSERVATION_GROUP_NAME][metric_name]
+            metric_value = obs[self.metrics_observation_group_name][metric_name]
             if isinstance(metric_value, torch.Tensor):
                 metric_value = metric_value.item()
             metrics[metric_name] = float(metric_value)
