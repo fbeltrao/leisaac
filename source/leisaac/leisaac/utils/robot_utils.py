@@ -29,6 +29,11 @@ def convert_leisaac_action_to_lerobot(action: torch.Tensor | np.ndarray) -> np.n
     if isinstance(action, torch.Tensor):
         action = action.cpu().numpy()
 
+    # Handle 3D arrays (temporal, batch, action_dim) by squeezing batch dimension
+    original_shape = action.shape
+    if action.ndim == 3 and action.shape[1] == 1:
+        action = action.squeeze(1)  # (temporal, 1, action_dim) -> (temporal, action_dim)
+
     processed_action = np.zeros_like(action)
     joint_limits = SO101_FOLLOWER_USD_JOINT_LIMLITS
     motor_limits = SO101_FOLLOWER_MOTOR_LIMITS
@@ -51,6 +56,10 @@ def convert_lerobot_action_to_leisaac(action: torch.Tensor | np.ndarray) -> np.n
     """
     if isinstance(action, torch.Tensor):
         action = action.cpu().numpy()
+
+    # Handle 3D arrays (temporal, batch, action_dim) by squeezing batch dimension
+    if action.ndim == 3 and action.shape[1] == 1:
+        action = action.squeeze(1)  # (temporal, 1, action_dim) -> (temporal, action_dim)
 
     processed_action = np.zeros_like(action)
     joint_limits = SO101_FOLLOWER_USD_JOINT_LIMLITS

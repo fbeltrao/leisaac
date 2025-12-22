@@ -103,20 +103,22 @@ class EvaluationConfig:
     Args:
         init_env_cfg (Callable[[argparse.Namespace, gym.Env], gym.Env] | None): Function to modify the environment
             configuration before creating the environment.
-        create_policy (Callable[[argparse.Namespace, gym.Env], object] | None): Custom function to create the policy.
-        on_before_step (Callable[[gym.Env, object], None] | None): Function to be called before each environment step.
-        environment_libraries (list[str] | str | None): Additional environment libraries to import.
-        process_observations (Callable[[dict, str, str] , dict] | None): Function to preprocess observation dict
+        create_policy (Callable[[argparse.Namespace, gym.Env, list[str] | None], object] | None): Custom function to create the policy.
+        actions_processor (Callable[[gym.Env, object], dict] | None): Function to preprocess actions before applying them to the environment.
+        observations_processor (Callable[[dict, str, str] , dict] | None): Function to preprocess observation dict
             before getting actions from the policy.
+        environment_libraries (list[str] | str | None): Additional environment libraries to import.
         environment_metrics_group_name (str | None): Name of the observation group to log as metrics.
+        joint_names (list[str] | None): List of joint names for the robot.
     """
 
     init_env_cfg: Callable[[argparse.Namespace, object], object] | None = None
-    create_policy: Callable[[argparse.Namespace, gym.Env], object] | None = None
-    on_before_step: Callable[[gym.Env, object], None] | None = None
+    create_policy: Callable[[argparse.Namespace, gym.Env, list[str] | None], object] | None = None
+    actions_processor: Callable[[gym.Env, dict, dict], dict] | None = None
+    observations_processor: Callable[[dict, str, str], dict] | None = None
     environment_libraries: list[str] | str | None = None
-    process_observations: Callable[[dict, str, str], dict] | None = None
     environment_metrics_group_name: str | None = None
+    joint_names: list[str] | None = None
 
 
 def import_libraries(libraries: list[str] | str):
@@ -237,11 +239,11 @@ def run_app(
     policy: Policy
     policy_type: str
     if config is not None and config.create_policy is not None:
-        policy, policy_type = config.create_policy(args_cli, env)
+        policy, policy_type = config.create_policy(args_cli, env, config.joint_names)
     else:
         from .policy import create_policy
 
-        policy, policy_type = create_policy(args_cli, env)
+        policy, policy_type = create_policy(args_cli, env, config.joint_names)
 
     rate_limiter = RateLimiter(args_cli.step_hz)
     controller = Controller()
@@ -257,8 +259,8 @@ def run_app(
     unwrapped_env = env.unwrapped
     device = unwrapped_env.device
 
-    post_action_processor = None if config is not None or config.post_action_processor is None else config.post_action_processor
-    observation_processor  = None if config is not None or config.process_observations is None else config.process_observations
+    actions_processor = None if config is None or config.actions_processor is None else config.actions_processor
+    observation_processor  = None if config is None or config.observations_processor is None else config.observations_processor
 
     while max_episode_count <= 0 or episode_count <= max_episode_count:
         print(f"[Evaluation] Evaluating episode {episode_count}...")
@@ -279,18 +281,14 @@ def run_app(
                     )
 
                 actions = policy.get_action(obs_dict).to(device)
-                if post_action_processor is not None:
-                    actions = post_action_processor(actions, obs_dict)
+                if actions_processor is not None:
+                    actions = actions_processor(env, actions, obs_dict)
                 
 
                 for i in range(min(args_cli.policy_action_horizon, actions.shape[0])):
-                    action = actions[i, :, :]
+                    action = actions[i, :, :] if actions.ndim == 3 else actions[i, :]
 
-                    if config and config.on_before_step is not None:
-                        config.on_before_step(env, action)
-                    obs_dict, _, reset_terminated, reset_time_outs, extras = env.step(
-                        action
-                    )
+                    obs_dict, _, reset_terminated, reset_time_outs, extras = env.step(action.unsqueeze(0))
 
                     termination_status = detect_termination(
                         reset_terminated, reset_time_outs, extras

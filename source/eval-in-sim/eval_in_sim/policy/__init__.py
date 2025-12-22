@@ -4,7 +4,7 @@ from isaaclab.sensors import Camera
 import gymnasium as gym
 
 
-def create_policy(args_cli: argparse.Namespace, env: gym.Env) -> tuple[Policy, str]:
+def create_policy(args_cli: argparse.Namespace, env: gym.Env, joint_names: list[str] = None) -> tuple[Policy, str]:
 
     policy_type = args_cli.policy_type
     if policy_type == "gr00tn1.5":
@@ -32,6 +32,7 @@ def create_policy(args_cli: argparse.Namespace, env: gym.Env) -> tuple[Policy, s
             pretrained_name_or_path=args_cli.policy_checkpoint_path,
             actions_per_chunk=args_cli.policy_action_horizon,
             device=args_cli.device,
+            joint_names=joint_names,
         ), "lerobot"
     elif policy_type == "openpi":
         from .service_policy_clients import OpenPIServicePolicyClient

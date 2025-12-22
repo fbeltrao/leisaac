@@ -4,11 +4,6 @@ import time
 import grpc
 import numpy as np
 import torch
-from leisaac.utils.constant import SINGLE_ARM_JOINT_NAMES
-from leisaac.utils.robot_utils import (
-    convert_leisaac_action_to_lerobot,
-    convert_lerobot_action_to_leisaac,
-)
 
 from .base import Policy, WebsocketServicePolicy, ZMQServicePolicy
 from .lerobot.helpers import RemotePolicyConfig, TimedObservation
@@ -47,7 +42,7 @@ class Gr00tServicePolicyClient(ZMQServicePolicy):
         obs_dict = {f"video.{key}": observation_dict[key].cpu().numpy().astype(np.uint8) for key in self.camera_keys}
 
         if "single_arm" in self.modality_keys:
-            joint_pos = convert_leisaac_action_to_lerobot(observation_dict["joint_pos"])
+            joint_pos = observation_dict["joint_pos"]
             obs_dict["state.single_arm"] = joint_pos[:, 0:5].astype(np.float64)
             obs_dict["state.gripper"] = joint_pos[:, 5:6].astype(np.float64)
         # TODO: add bi-arm support
@@ -79,7 +74,6 @@ class Gr00tServicePolicyClient(ZMQServicePolicy):
             [action_chunk["action.single_arm"], action_chunk["action.gripper"]],
             axis=1,
         )
-        concat_action = convert_lerobot_action_to_leisaac(concat_action)
 
         return torch.from_numpy(concat_action[:, None, :])
 
@@ -101,6 +95,7 @@ class LeRobotServicePolicyClient(Policy):
         pretrained_name_or_path: str = "checkpoints/last/pretrained_model",
         actions_per_chunk: int = 50,
         device: str = "cuda",
+        joint_names: list[str] = None,
     ):
         """
         Args:
@@ -119,6 +114,7 @@ class LeRobotServicePolicyClient(Policy):
         self.timeout_ms = timeout_ms
         self.task_type = task_type
         self.actions_per_chunk = actions_per_chunk
+        self.joint_names = joint_names
 
         lerobot_features = {}
         self.last_action = None
@@ -126,7 +122,7 @@ class LeRobotServicePolicyClient(Policy):
             lerobot_features["observation.state"] = {
                 "dtype": "float32",
                 "shape": (6,),
-                "names": [f"{joint_name}.pos" for joint_name in SINGLE_ARM_JOINT_NAMES],
+                "names": [f"{joint_name}.pos" for joint_name in self.joint_names],
             }
             self.last_action = np.zeros((1, 6))
         # TODO: add bi-arm support
@@ -176,9 +172,9 @@ class LeRobotServicePolicyClient(Policy):
         raw_observation["task"] = observation_dict["task_description"]
 
         if self.task_type == "so101leader":
-            joint_pos = convert_leisaac_action_to_lerobot(observation_dict["joint_pos"])
-            for joint_name in SINGLE_ARM_JOINT_NAMES:
-                raw_observation[f"{joint_name}.pos"] = joint_pos[0, SINGLE_ARM_JOINT_NAMES.index(joint_name)].item()
+            joint_pos = observation_dict["joint_pos"]
+            for joint_name in self.joint_names:
+                raw_observation[f"{joint_name}.pos"] = joint_pos[0, self.joint_names.index(joint_name)].item()
         # TODO: add bi-arm support
 
         """
@@ -224,17 +220,16 @@ class LeRobotServicePolicyClient(Policy):
             self._send_observation(observation_dict)
         action_chunk = self._receive_action()
         if action_chunk is None:
-            # self.skip_send_observation = True
-            return torch.from_numpy(self.last_action).repeat(self.actions_per_chunk, 1)[:, None, :]
+            self.skip_send_observation = True
+            return self.last_action.repeat(self.actions_per_chunk, 1)[:, None, :]
 
         action_list = [action.get_action()[None, :] for action in action_chunk]
         concat_action = torch.cat(action_list, dim=0)
-        concat_action = convert_lerobot_action_to_leisaac(concat_action)
 
         self.last_action = concat_action[-1, :]
         self.skip_send_observation = False
 
-        return torch.from_numpy(concat_action[:, None, :])
+        return concat_action
 
 
 class OpenPIServicePolicyClient(WebsocketServicePolicy):
@@ -273,7 +268,7 @@ class OpenPIServicePolicyClient(WebsocketServicePolicy):
         }
 
         if self.task_type == "so101leader":
-            joint_pos = convert_leisaac_action_to_lerobot(observation_dict["joint_pos"])
+            joint_pos = observation_dict["joint_pos"]
             obs_dict["state"] = joint_pos.squeeze().astype(np.float64)
         # TODO: add bi-arm support
 
@@ -292,10 +287,5 @@ class OpenPIServicePolicyClient(WebsocketServicePolicy):
         # get the action chunk via the policy server
         action_chunk = self.infer(obs_dict)["actions"]
 
-        """
-            Example of action_chunk for single arm task:
-            action_chunk: np.zeros((10, 6))
-        """
-        processed_action = convert_lerobot_action_to_leisaac(action_chunk)
 
-        return torch.from_numpy(processed_action[:, None, :])
+        return torch.from_numpy(action_chunk[:, None, :])
