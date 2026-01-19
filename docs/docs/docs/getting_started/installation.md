@@ -75,6 +75,18 @@ If you are using a 50-series GPU, we recommend using IsaacSim 5.0+ and IsaacLab 
 | PyTorch    | 2.5.1       | 2.7.0      | 2.7.0       |
 ::::
 
+### [Optional] Install Lerobot
+
+We also provide integration with LeRobot. In certain cases, you may need the lerobot dependency, such as for data conversion, lerobot dataset recorder, lerobot model inference, and envhub support. This is optional; you can install lerobot alongside leisaac when you need these features.
+
+```bash
+# Install with lerobot
+pip install -e "source/leisaac[lerobot]"
+
+# Fix numpy version
+pip install numpy==1.26.0
+```
+
 ## 2. Asset Preparation
 
 We provide an example USD asset—a kitchen scene. Please download related scene [here](https://github.com/LightwheelAI/leisaac/releases/tag/v0.1.0) and extract it into the `assets` directory. The directory structure should look like this:
@@ -103,8 +115,9 @@ Below are the download links for the scenes we provide. For more high-quality sc
 | Lightwheel Toyroom   | Modern room with many toys         | [Download](https://github.com/LightwheelAI/leisaac/releases/tag/v0.1.1)                  |
 | Table with Cube      | Simple table with one cube         | [Download](https://github.com/LightwheelAI/leisaac/releases/tag/v0.1.2)                  |
 | Lightwheel Bedroom   | Realistic bedroom scene with cloth | [Download](https://github.com/LightwheelAI/leisaac/releases/tag/v0.2.0)                  |
+| Lightwheel Loft      | Large two-story loft               | [Download](https://github.com/LightwheelAI/leisaac/releases/tag/v0.3.0)                  |
 
-You can also download scenes from [huggingface](https://huggingface.co/LightwheelAI/leisaac_env/tree/main), which be stored in the `assets` directory.
+You can also download scenes from [huggingface](https://huggingface.co/LightwheelAI/leisaac_env/tree/main); they should be placed in the `assets` directory. Robot assets can also be found and downloaded from this repository.
 ::::
 
 ## 3. Device Setup

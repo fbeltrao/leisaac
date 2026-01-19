@@ -55,6 +55,36 @@ const sidebars = {
     },
     {
       type: 'category',
+      label: 'Tutorials',
+      link: {
+        type: 'generated-index',
+        slug: '/docs/tutorials',
+        title: 'Tutorials',
+        description: 'LeIsaac tutorials overview.',
+      },
+      items: [
+        {
+          type: 'category',
+          label: 'Add Custom Task',
+          link: { type: 'doc', id: 'docs/tutorials/custom_task' },
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'LeIsaac × Marble',
+          link: { type: 'doc', id: 'docs/tutorials/marble_tutorial' },
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'LeIsaac × Cosmos',
+          link: { type: 'doc', id: 'docs/tutorials/cosmos_tutorial' },
+          items: [],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Extra Features',
       link: {
         type: 'generated-index',
@@ -79,6 +109,12 @@ const sidebars = {
           type: 'category',
           label: 'EnvHub Support',
           link: { type: 'doc', id: 'docs/features/envhub_support' },
+          items: [],
+        },
+        {
+          type: 'category',
+          label: 'LeRobot Recorder',
+          link: { type: 'doc', id: 'docs/features/lerobot_recorder' },
           items: [],
         },
       ],
